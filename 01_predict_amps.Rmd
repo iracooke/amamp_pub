@@ -1,0 +1,41 @@
+---
+title: "Predict AMPs"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Genome-wide prediction from the A.mil genome with `ampir`
+
+```{r}
+library(ampir)
+all_prots <- read_faa("raw_data/amil_1.0.maker_006.proteins.fasta")
+
+predictions <- predict_amps(all_prots,min_len = 20,n_cores = 4)
+```
+Filter predictions
+
+```{r}
+library(tidyverse)
+ggplot(predictions,aes(x=prob_AMP)) + geom_density()
+```
+
+```{r}
+filtered_predictions <- predictions %>% filter(prob_AMP>0.9)
+
+predictions %>% filter(seq_name=="1.2.5032.m1")
+```
+
+
+What about the mature peptide. This gives an improved prediction
+
+```{r}
+am_amp <- all_prots %>% filter(seq_name=="1.2.5032.m1")
+am_amp_mature$seq_aa <- substr(am_amp$seq_aa,72,117)
+
+predict_amps(am_amp_mature, model = "mature")
+```
+

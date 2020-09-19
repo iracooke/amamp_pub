@@ -1,0 +1,62 @@
+---
+title: "Visualise Trees"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggtree)
+library(treeio)
+library(ape)
+library(ggstance)
+library(ggplotify)
+```
+
+
+```{r}
+tree_data <- readxl::read_excel("raw_data/PutativeHomologs.xlsx") %>% 
+  unite("biglabel",Species,`Short ID`,remove = FALSE, sep = " : ") %>% 
+  select(taxa = `Short ID`, biglabel, Species, Group) 
+```
+
+
+Nucleic acid alignment codon tree
+
+```{r}
+p2ntree <- read.iqtree("hpc/iqtree/partition_v8.nex.best_scheme.nex.treefile")
+
+ggtree(p2ntree, aes(color=Group)) %<+% tree_data +
+  geom_tiplab(align = T) +
+  geom_nodelab(aes(label=node)) +
+  xlim(NA,15)
+
+complex_mrca = 19
+robust_mrca = 25
+
+```
+
+
+```{r}
+
+charsize=0.8
+
+gp <- ggtree(p2ntree) %<+% tree_data +
+  # geom_tiplab(align = T) +
+  geom_tiplab(align = T, aes(label=Species,color=Group), fontface="italic") +
+  # geom_cladelabel(complex_mrca,"Complexa", angle=0, align = T, offset = -1.5, offset.text = 0.2, geom = "text", barsize = 0) +
+  # geom_cladelabel(robust_mrca,"Robusta", angle=0, align = T, offset = -1.5, offset.text = 0.2, geom = "text", barsize = 0) +
+      # geom_tiplab(align = T, aes(label=Species, color=Group)) +
+  geom_nodelab(nudge_x = -0.2,nudge_y = 0.35, size=2, aes(subset=(UFboot>50), label=UFboot)) +
+  theme(legend.position = "bottom", strip.background = element_blank(), strip.text = element_blank()) +
+  # theme(legend.key.size = unit(1,"mm")) +
+  xlim(NA,15) 
+#  facet_widths(gp,widths = c(3,1))
+
+ggsave("figures/tree_align_v8.png",width = 10,height = 5)  
+```
+
+

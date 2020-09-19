@@ -19,20 +19,7 @@ git clone https://github.com/iracooke/amamp_pub.git
 2. Download the raw data and unpack it from within the project repository.
 ```bash
 cd amamp_pub
-wget 'https://cloudstor.aarnet.edu.au/plus/s/zjlFSUchshirLUt/download' -O data.tgz
+wget 'https://cloudstor.aarnet.edu.au/plus/s/Xb7awBvDOnO8Mig/download' -O data.tgz
 tar -zxvf data.tgz
 ```
-
-### Data Processing
-
-- [Initial Transcriptome Assembly](hpc/Assembly)
-- [Symbiont Transcript Removal](hpc/psytrans)
-- [Clustering transcripts and counting assigned reads](hpc/corset)
-- [Functional Annotation with Trinotate](hpc/trinotate)
-
-### Statistical Analysis and Visualisation
-
-- [Gene Annotation](01_annotate.md)
-- [Differential Expression Analysis](02_deseq.md)
-- [Analysis of Polyp Activity Observations](03_polyp_activity.md)
 

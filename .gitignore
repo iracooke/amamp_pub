@@ -1,0 +1,6 @@
+.Rproj.user/
+.RData
+00_scrap
+*.tgz
+hpc
+raw_data

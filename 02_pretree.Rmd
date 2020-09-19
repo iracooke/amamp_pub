@@ -1,0 +1,56 @@
+---
+title: "Prepare Data for Tree Building"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ampir)
+```
+
+
+```{r}
+amamp_seqs <- readxl::read_excel("raw_data/PutativeHomologs.xlsx")
+
+amamp_seqs %>% select(`Short ID`,aaseq) %>% as.data.frame() %>% df_to_faa(file = "hpc/iqtree/amamp_aa.fasta")
+```
+
+Examination of these sequences in Geneious allows exclusion of the following as probably not homologous; 
+
+- `G_vent`, `R_yuma`, `D_sp`
+
+Additionally the following sequence was removed because it is identical to one of the others
+- `P_stri_1`
+
+And when attempting to find coding sequences we discovered that 'cds.comp4338_c0_seq1|m.14882' does not exist in the Kaust F_scutaria transcriptome file. Therefore `F_scut-2` was also removed.
+
+After aligning the remaining sequences with MAFFT we then mask regions of the alignment with more than 80% gaps and export this to the file `iqtree/full2.fasta`
+
+Trees were then built with `iqtree` as follows;
+
+```bash
+iqtree -s full2.fasta --alrt 1000 -B 1000 -T 4 -o "Z_sp"
+```
+
+We also investigated the physicochemical properties of mature peptides corresponding to these sequences.  To do this we extracted the mature peptide region of the full alignment (above) starting with the conserved `KR` and extending to the C-terminus. We then stripped gaps from these sequences and subjected them to analysis with `ampir`.
+
+```{r}
+library(ampir)
+
+mature_df <- read_faa("hpc/mature/mature_nomask_stripped_v7.fasta") %>% 
+  mutate(seq_aa = str_replace_all(seq_aa,"-","")) %>% 
+  filter(nchar(seq_aa)>10)
+
+mature_features <- calculate_features(mature_df)
+
+write_tsv(mature_features,"hpc/mature/mature_features.tsv")
+```
+
+
+
+
+

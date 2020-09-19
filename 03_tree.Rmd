@@ -1,0 +1,115 @@
+---
+title: "Visualise Trees"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(ggtree)
+library(treeio)
+library(ape)
+library(ggstance)
+library(ggplotify)
+```
+
+
+```{r}
+mature_features <- read_tsv("hpc/mature/mature_features.tsv") %>% select(taxa=seq_name,Amphiphilicity,Hydrophobicity,pI,Mw,Charge)
+
+tree_data <- readxl::read_excel("raw_data/PutativeHomologs.xlsx") %>% 
+  unite("biglabel",Species,`Short ID`,remove = FALSE, sep = " : ") %>% 
+  select(taxa = `Short ID`, biglabel, Species, Group) %>% 
+  left_join(mature_features)
+```
+
+
+Nucleic acid alignment codon tree
+
+```{r}
+p2ntree <- read.iqtree("hpc/iqtree/partition_v7.nex.treefile")
+
+ggtree(p2ntree, aes(color=Group)) %<+% tree_data +
+  geom_tiplab(align = T) +
+  geom_nodelab(aes(label=node)) +
+  xlim(NA,5)
+
+complex_mrca = 19
+robust_mrca = 25
+
+#ggsave(filename = "figures/tree.png")
+```
+
+Convert mature peptide alignment into a table of positions
+
+```{r}
+library(seqinr)
+
+mature_nomask <- read.fasta("hpc/mature/mature_nomask_nameclean_v7.fasta", seqtype = "AA")
+mature_table <- t(sapply(names(mature_nomask), function(N){ mature_nomask[[N]]})) %>% 
+  as.data.frame() %>% 
+  rownames_to_column("taxa") %>% 
+  gather(key="pos",value="base",-taxa) %>% 
+  mutate(pos=as.integer(str_replace(pos,"V",""))) 
+
+cysteines <- mature_table %>% filter(base=="C")
+positive_charged_k <- mature_table %>% filter(base=="K")
+positive_charged_r <- mature_table %>% filter(base=="R")
+gaps <- mature_table %>% filter(base=="-")
+remainder <- mature_table %>% filter(!(base %in% c("-","K","R","C")))
+```
+
+```{r}
+
+charsize=0.9
+hm_charge <- tree_data %>% select(Charge) %>% as.data.frame()
+rownames(hm_charge) <- tree_data$taxa
+hm_amph <- tree_data %>% select(Amphiphilicity) %>% as.data.frame()
+rownames(hm_amph) <- tree_data$taxa
+
+
+gp <- ggtree(p2ntree) %<+% tree_data +
+  # geom_tiplab(align = T) +
+  geom_tiplab(align = T, aes(label=Species), fontface="italic", size=3) +
+  geom_hilight(complex_mrca) +
+  geom_hilight(robust_mrca, extend = 1.88, fill="darkgreen") +
+  # geom_cladelabel(complex_mrca,"Complexa", angle=0, align = T, offset = -1.5, offset.text = 0.2, geom = "text", barsize = 0) +
+  # geom_cladelabel(robust_mrca,"Robusta", angle=0, align = T, offset = -1.5, offset.text = 0.2, geom = "text", barsize = 0) +
+      # geom_tiplab(align = T, aes(label=Species, color=Group)) +
+  geom_nodelab(nudge_x = -0.15,nudge_y = 0.35, size=2.5, aes(subset=(UFboot>50), label=UFboot)) +
+  geom_facet(panel = "Peptide Alignment", data = cysteines, geom = geom_point, mapping = aes(x=pos),size=charsize,stroke=2, color="red", shape="C", fontface="bold") +
+  geom_facet(panel = "Peptide Alignment", data = positive_charged_k, geom = geom_point, mapping = aes(x=pos),size=charsize,stroke=2, color="blue", shape="K",alpha=1, fontface="bold") +
+  geom_facet(panel = "Peptide Alignment", data = positive_charged_r, geom = geom_point, mapping = aes(x=pos),size=charsize,stroke=2, color="blue", shape="R",alpha=1, fontface="bold") +
+  geom_facet(panel = "Peptide Alignment", data = gaps, geom = geom_point, mapping = aes(x=pos),stroke=2,size=charsize ,color="grey", shape=".") +
+  geom_facet(panel = "Peptide Alignment", data = remainder, geom = geom_point, mapping = aes(x=pos),size=charsize,stroke=2, color="grey", shape="X", alpha=1) +  
+  
+  theme(legend.position = "bottom", strip.background = element_blank(), strip.text = element_blank()) +
+  # theme(legend.key.size = unit(1,"mm")) +
+  xlim_tree(2) 
+
+hmoff <- 1.5
+
+tr3 <- gheatmap(gp,hm_charge, width = 0.1, colnames_angle = 90, colnames_offset_y = -1.5, offset = hmoff) + 
+  scale_fill_viridis_c(option="B", name = "Charge")
+library(ggnewscale)
+
+tr4 <- tr3 + new_scale_fill()
+
+ghmp <- gheatmap(tr4, hm_amph,width = 0.1, offset = hmoff+0.4, colnames_angle = 90, colnames_offset_y = -2.7) + 
+  scale_fill_viridis_c(option="D", name = "Amphiphilicity") + ylim(-10,25) +
+#  theme(legend.position = "bottom")
+  theme(legend.position = c(0.3,0.2), legend.direction = "horizontal", legend.box = "horizontal", text=element_text(size=10)) 
+  
+#ghmp3 <- tr3 + ylim(-10,25)+ theme(legend.position = c(0.3,0.2), legend.direction = "horizontal", legend.box = "horizontal", text=element_text(size=10)) 
+
+
+facet_widths(ghmp,widths = c(4,2))
+
+ggsave("figures/tree_hm.pdf", width = 220, height = 180, units="mm",dpi=300)
+
+#ggsave("figures/tree_hm.png", width = 10, height = 8, dpi=450)
+
+```
